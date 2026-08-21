@@ -77,3 +77,86 @@ def test_run_open_chrome():
     result = agent.run("Open Firefox")
 
     assert result is True
+
+def test_plan_create_file():
+    agent = OrbitAgent()
+
+    result = agent.plan("create a file called notes.txt")
+
+    assert result == {
+        "action": "create_file",
+        "target": "notes.txt",
+    }
+
+
+def test_plan_create_folder():
+    agent = OrbitAgent()
+
+    result = agent.plan("create a folder called Projects")
+
+    assert result == {
+        "action": "create_folder",
+        "target": "Projects",
+    }
+def test_plan_delete_file():
+    agent = OrbitAgent()
+
+    result = agent.plan("delete the file notes.txt")
+
+    assert result == {
+        "action": "delete_file",
+        "target": "notes.txt",
+    }
+
+
+def test_plan_delete_folder():
+    agent = OrbitAgent()
+
+    result = agent.plan("delete the folder Projects")
+
+    assert result == {
+        "action": "delete_folder",
+        "target": "Projects",
+    }
+
+
+def test_plan_move():
+    agent = OrbitAgent()
+
+    result = agent.plan("move notes.txt to Documents/notes.txt")
+
+    assert result == {
+        "action": "move",
+        "target": {
+            "source": "notes.txt",
+            "destination": "Documents/notes.txt",
+        },
+    }
+
+
+def test_plan_copy_file():
+    agent = OrbitAgent()
+
+    result = agent.plan("copy notes.txt to Backup/notes.txt")
+
+    assert result == {
+        "action": "copy_file",
+        "target": {
+            "source": "notes.txt",
+            "destination": "Backup/notes.txt",
+        },
+    }
+
+
+def test_plan_rename_file():
+    agent = OrbitAgent()
+
+    result = agent.plan("rename notes.txt to old_notes.txt")
+
+    assert result == {
+        "action": "rename_file",
+        "target": {
+            "source": "notes.txt",
+            "destination": "old_notes.txt",
+        },
+    }

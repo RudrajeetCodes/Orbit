@@ -390,3 +390,4 @@ def test_search_files(tmp_path):
     assert len(result) == 2
     assert any("main.py" in path for path in result)
     assert any("core.py" in path for path in result)
+
