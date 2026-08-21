@@ -203,3 +203,13 @@ def test_plan_make_file():
         "action": "create_file",
         "target": "notes.txt",
     }
+
+def test_plan_make_folder():
+    agent = OrbitAgent()
+
+    result = agent.plan("make a folder called Projects")
+
+    assert result == {
+        "action": "create_folder",
+        "target": "Projects",
+    }

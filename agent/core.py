@@ -77,6 +77,15 @@ class OrbitAgent:
                     "target": target,
                 }
 
+        if "make a folder called " in command_lower:
+            target = command.split("make a folder called ", 1)[1].strip()
+
+            if target:
+                return {
+                    "action": "create_folder",
+                    "target": target,
+                }
+
         if "delete the file " in command_lower:
             target = command[len("delete the file ") :].strip()
 
