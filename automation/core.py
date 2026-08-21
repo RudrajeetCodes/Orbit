@@ -1,4 +1,6 @@
+from pathlib import Path
 import subprocess
+from pathlib import Path
 
 
 class Automation:
@@ -39,6 +41,59 @@ class Automation:
 
         return True
 
+    def create_folder(self, target):
+        """Create a new folder."""
+
+        if not target:
+            return False
+
+        folder = Path(target)
+
+        if folder.exists():
+            return False
+
+        folder.mkdir(parents=True)
+
+        return True
+
+    def delete_folder(self, target):
+        """Delete an empty folder."""
+
+        if not target:
+            return False
+
+        folder = Path(target)
+
+        if not folder.exists() or not folder.is_dir():
+            return False
+
+        folder.rmdir()
+
+        return True
+
+    def create_file(self, target):
+        """Create an empty file."""
+        file = Path(target)
+
+        if file.exists():
+            return False
+
+        file.parent.mkdir(parents=True, exist_ok=True)
+        file.touch()
+
+        return True
+
+    def delete_file(self, target):
+        """Delete a file."""
+        file = Path(target)
+
+        if not file.exists() or not file.is_file():
+            return False
+
+        file.unlink()
+
+        return True
+
     def execute(self, action):
         """Execute a structured Orbit action."""
 
@@ -50,5 +105,17 @@ class Automation:
 
         if action.get("action") == "open_url":
             return self.open_url(action.get("target"))
+
+        if action.get("action") == "create_folder":
+            return self.create_folder(action.get("target"))
+
+        if action.get("action") == "delete_file":
+            return self.delete_file(action.get("target"))
+
+        if action.get("action") == "create_file":
+            return self.create_file(action.get("target"))
+
+        if action.get("action") == "delete_folder":
+            return self.delete_folder(action.get("target"))
 
         return False
