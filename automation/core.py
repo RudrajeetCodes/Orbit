@@ -1,4 +1,4 @@
-from pathlib import Path
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -107,6 +107,113 @@ class Automation:
 
         return True
 
+    def copy_file(self, target):
+        """Copy a file."""
+        source = Path(target["source"])
+        destination = Path(target["destination"])
+
+        if not source.exists() or not source.is_file():
+            return False
+
+        if destination.exists():
+            return False
+
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
+
+        return True
+
+    def copy_folder(self, target):
+        """Copy a folder."""
+        source = Path(target["source"])
+        destination = Path(target["destination"])
+
+        if not source.exists() or not source.is_dir():
+            return False
+
+        if destination.exists():
+            return False
+
+        shutil.copytree(source, destination)
+
+        return True
+
+    def rename_file(self, target):
+        """Rename a file."""
+        source = Path(target.get("source"))
+        destination = Path(target.get("destination"))
+
+        if not source.exists() or not source.is_file():
+            return False
+
+        if destination.exists():
+            return False
+
+        source.rename(destination)
+
+        return True
+
+    def rename_folder(self, target):
+        """Rename a folder."""
+        source = Path(target.get("source"))
+        destination = Path(target.get("destination"))
+
+        if not source.exists() or not source.is_dir():
+            return False
+
+        if destination.exists():
+            return False
+
+        source.rename(destination)
+
+        return True
+
+    def list_directory(self, target):
+        """List the contents of a directory."""
+        folder = Path(target)
+
+        if not folder.exists() or not folder.is_dir():
+            return False
+
+        return [item.name for item in folder.iterdir()]
+
+    def get_file_info(self, target):
+        """Get information about a file or folder."""
+        path = Path(target)
+
+        if not path.exists():
+            return False
+
+        if path.is_file():
+            file_type = "file"
+        elif path.is_dir():
+            file_type = "folder"
+        else:
+            file_type = "other"
+
+        return {
+            "name": path.name,
+            "type": file_type,
+            "size": path.stat().st_size,
+        }
+
+    def search_files(self, target):
+        """Search for files matching a pattern."""
+        directory = Path(target.get("directory"))
+        pattern = target.get("pattern")
+
+        if not directory.exists() or not directory.is_dir():
+            return False
+
+        if not pattern:
+            return False
+
+        return [
+            str(path)
+            for path in directory.rglob(pattern)
+            if path.is_file()
+        ]
+
     def execute(self, action):
         """Execute a structured Orbit action."""
 
@@ -134,5 +241,26 @@ class Automation:
 
         if action.get("action") == "delete_folder":
             return self.delete_folder(action.get("target"))
+
+        if action.get("action") == "copy_file":
+            return self.copy_file(action.get("target"))
+
+        if action.get("action") == "copy_folder":
+            return self.copy_folder(action.get("target"))
+
+        if action.get("action") == "rename_file":
+            return self.rename_file(action.get("target"))
+
+        if action.get("action") == "rename_folder":
+            return self.rename_folder(action.get("target"))
+
+        if action.get("action") == "list_directory":
+            return self.list_directory(action.get("target"))
+
+        if action.get("action") == "get_file_info":
+            return self.get_file_info(action.get("target"))
+
+        if action.get("action") == "search_files":
+            return self.search_files(action.get("target"))
 
         return False
