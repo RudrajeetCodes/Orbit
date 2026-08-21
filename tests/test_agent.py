@@ -8,7 +8,40 @@ def test_open_chrome():
 
     assert result == {
         "action": "open_app",
-        "target": "chrome"
+        "target": "chrome",
+    }
+
+
+def test_open_firefox():
+    agent = OrbitAgent()
+
+    result = agent.plan("Open Firefox")
+
+    assert result == {
+        "action": "open_app",
+        "target": "firefox",
+    }
+
+
+def test_open_terminal():
+    agent = OrbitAgent()
+
+    result = agent.plan("Open Terminal")
+
+    assert result == {
+        "action": "open_app",
+        "target": "terminal",
+    }
+
+
+def test_open_files():
+    agent = OrbitAgent()
+
+    result = agent.plan("Open Files")
+
+    assert result == {
+        "action": "open_app",
+        "target": "file_manager",
     }
 
 
@@ -19,7 +52,7 @@ def test_unknown_command():
 
     assert result == {
         "action": "unknown",
-        "target": None
+        "target": None,
     }
 
 

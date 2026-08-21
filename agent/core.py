@@ -24,10 +24,28 @@ class OrbitAgent:
         if "open chrome" in command:
             return {
                 "action": "open_app",
-                "target": "chrome"
+                "target": "chrome",
+            }
+
+        if "open firefox" in command:
+            return {
+                "action": "open_app",
+                "target": "firefox",
+            }
+
+        if "open terminal" in command:
+            return {
+                "action": "open_app",
+                "target": "terminal",
+            }
+
+        if "open files" in command or "open file manager" in command:
+            return {
+                "action": "open_app",
+                "target": "file_manager",
             }
 
         return {
             "action": "unknown",
-            "target": None
+            "target": None,
         }
