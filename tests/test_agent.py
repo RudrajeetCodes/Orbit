@@ -160,3 +160,36 @@ def test_plan_rename_file():
             "destination": "old_notes.txt",
         },
     }
+
+def test_plan_list_directory():
+    agent = OrbitAgent()
+
+    result = agent.plan("list the files in Projects")
+
+    assert result == {
+        "action": "list_directory",
+        "target": "Projects",
+    }
+
+def test_plan_get_file_info():
+    agent = OrbitAgent()
+
+    result = agent.plan("show information about notes.txt")
+
+    assert result == {
+        "action": "get_file_info",
+        "target": "notes.txt",
+    }
+
+def test_plan_search_files():
+    agent = OrbitAgent()
+
+    result = agent.plan("find Python files in Projects")
+
+    assert result == {
+        "action": "search_files",
+        "target": {
+            "directory": "Projects",
+            "pattern": "*.py",
+        },
+    }

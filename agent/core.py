@@ -127,6 +127,48 @@ class OrbitAgent:
                         "destination": destination,
                     },
                 }
+            
+        if "list the files in " in command_lower:
+            target = command[len("list the files in "):].strip()
+
+            if target:
+                return {
+                    "action": "list_directory",
+                    "target": target,
+                }
+
+        if "show information about " in command_lower:
+            target = command[len("show information about "):].strip()
+
+            if target:
+                return {
+                    "action": "get_file_info",
+                    "target": target,
+                }
+
+        if "find " in command_lower and " files in " in command_lower:
+            parts = command.split(" files in ", 1)
+
+            pattern_name = parts[0][5:].strip()
+            directory = parts[1].strip()
+
+            if pattern_name and directory:
+                if pattern_name.lower() == "python":
+                    pattern = "*.py"
+                elif pattern_name.lower() == "text":
+                    pattern = "*.txt"
+                elif pattern_name.lower() == "markdown":
+                    pattern = "*.md"
+                else:
+                    pattern = f"*.{pattern_name}"
+
+                return {
+                    "action": "search_files",
+                    "target": {
+                        "directory": directory,
+                        "pattern": pattern,
+                    },
+                }
 
         return {
             "action": "unknown",
