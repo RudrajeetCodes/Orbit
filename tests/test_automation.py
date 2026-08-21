@@ -130,3 +130,70 @@ def test_delete_missing_file(tmp_path):
     })
 
     assert result is False
+
+
+def test_move_file(tmp_path):
+    automation = Automation()
+
+    source = tmp_path / "old_name.txt"
+    destination = tmp_path / "new_name.txt"
+
+    source.write_text("Orbit data")
+
+    result = automation.execute({
+        "action": "move",
+        "target": {
+            "source": str(source),
+            "destination": str(destination),
+        },
+    })
+
+    assert result is True
+    assert not source.exists()
+    assert destination.exists()
+    assert destination.read_text() == "Orbit data"
+
+
+def test_move_folder(tmp_path):
+    automation = Automation()
+
+    source = tmp_path / "old_folder"
+    destination = tmp_path / "new_folder"
+
+    source.mkdir()
+    (source / "data.txt").write_text("Orbit data")
+
+    result = automation.execute({
+        "action": "move",
+        "target": {
+            "source": str(source),
+            "destination": str(destination),
+        },
+    })
+
+    assert result is True
+    assert not source.exists()
+    assert destination.exists()
+    assert (destination / "data.txt").read_text() == "Orbit data"
+
+
+def test_move_to_existing_destination(tmp_path):
+    automation = Automation()
+
+    source = tmp_path / "source.txt"
+    destination = tmp_path / "destination.txt"
+
+    source.write_text("source data")
+    destination.write_text("important data")
+
+    result = automation.execute({
+        "action": "move",
+        "target": {
+            "source": str(source),
+            "destination": str(destination),
+        },
+    })
+
+    assert result is False
+    assert source.exists()
+    assert destination.read_text() == "important data"
