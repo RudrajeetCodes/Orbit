@@ -213,3 +213,13 @@ def test_plan_make_folder():
         "action": "create_folder",
         "target": "Projects",
     }
+
+def test_plan_remove_file():
+    agent = OrbitAgent()
+
+    result = agent.plan("remove the file notes.txt")
+
+    assert result == {
+        "action": "delete_file",
+        "target": "notes.txt",
+    }

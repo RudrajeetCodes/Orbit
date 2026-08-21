@@ -51,7 +51,7 @@ class OrbitAgent:
             }
 
         if "create a file called " in command_lower:
-            target = command.split("create a file called ", 1)[1].strip()
+            target = command[len("create a file called ") :].strip()
 
             if target:
                 return {
@@ -60,7 +60,7 @@ class OrbitAgent:
                 }
 
         if "make a file called " in command_lower:
-            target = command.split("make a file called ", 1)[1].strip()
+            target = command[len("make a file called ") :].strip()
 
             if target:
                 return {
@@ -101,6 +101,15 @@ class OrbitAgent:
             if target:
                 return {
                     "action": "delete_folder",
+                    "target": target,
+                }
+
+        if "remove the file " in command_lower:
+            target = command[len("remove the file ") :].strip()
+
+            if target:
+                return {
+                    "action": "delete_file",
                     "target": target,
                 }
 
