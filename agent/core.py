@@ -59,6 +59,15 @@ class OrbitAgent:
                     "target": target,
                 }
 
+        if "make a file called " in command_lower:
+            target = command.split("make a file called ", 1)[1].strip()
+
+            if target:
+                return {
+                    "action": "create_file",
+                    "target": target,
+                }
+
         if "create a folder called " in command_lower:
             target = command.split("create a folder called ", 1)[1].strip()
 
@@ -127,9 +136,9 @@ class OrbitAgent:
                         "destination": destination,
                     },
                 }
-            
+
         if "list the files in " in command_lower:
-            target = command[len("list the files in "):].strip()
+            target = command[len("list the files in ") :].strip()
 
             if target:
                 return {
@@ -138,7 +147,7 @@ class OrbitAgent:
                 }
 
         if "show information about " in command_lower:
-            target = command[len("show information about "):].strip()
+            target = command[len("show information about ") :].strip()
 
             if target:
                 return {

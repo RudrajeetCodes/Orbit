@@ -193,3 +193,13 @@ def test_plan_search_files():
             "pattern": "*.py",
         },
     }
+
+def test_plan_make_file():
+    agent = OrbitAgent()
+
+    result = agent.plan("make a file called notes.txt")
+
+    assert result == {
+        "action": "create_file",
+        "target": "notes.txt",
+    }
