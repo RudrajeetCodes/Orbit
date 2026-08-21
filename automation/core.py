@@ -25,6 +25,20 @@ class Automation:
 
         return True
 
+    def open_url(self, target):
+        """Open a URL using Firefox."""
+
+        if not target:
+            return False
+
+        subprocess.Popen(
+            ["firefox", target],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
+        return True
+
     def execute(self, action):
         """Execute a structured Orbit action."""
 
@@ -33,5 +47,8 @@ class Automation:
 
         if action.get("action") == "open_app":
             return self.open_app(action.get("target"))
+
+        if action.get("action") == "open_url":
+            return self.open_url(action.get("target"))
 
         return False
