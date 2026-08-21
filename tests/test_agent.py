@@ -1,14 +1,14 @@
 from agent.core import OrbitAgent
 
 
-def test_open_chrome():
+def test_open_firefox():
     agent = OrbitAgent()
 
-    result = agent.plan("Open Chrome")
+    result = agent.plan("Open Firefox")
 
     assert result == {
         "action": "open_app",
-        "target": "chrome",
+        "target": "firefox",
     }
 
 
@@ -62,3 +62,18 @@ def test_empty_task():
     result = agent.plan()
 
     assert result is None
+
+
+def test_run_unknown_command():
+    agent = OrbitAgent()
+
+    result = agent.run("Do something random")
+
+    assert result is False
+
+def test_run_open_chrome():
+    agent = OrbitAgent()
+
+    result = agent.run("Open Firefox")
+
+    assert result is True

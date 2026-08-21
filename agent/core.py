@@ -1,8 +1,12 @@
+from automation.core import Automation
+
+
 class OrbitAgent:
     """Core agent responsible for coordinating Orbit tasks."""
 
     def __init__(self):
         self.current_task = None
+        self.automation = Automation()
 
     def set_task(self, task):
         self.current_task = task
@@ -49,3 +53,13 @@ class OrbitAgent:
             "action": "unknown",
             "target": None,
         }
+
+    def run(self, task):
+        """Plan and execute a user task."""
+
+        action = self.plan(task)
+
+        if action is None:
+            return False
+
+        return self.automation.execute(action)
