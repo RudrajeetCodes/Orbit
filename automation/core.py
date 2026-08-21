@@ -94,6 +94,19 @@ class Automation:
 
         return True
 
+    def move(self, source, destination):
+        """Move a file or folder."""
+        source = Path(source)
+        destination = Path(destination)
+
+        if not source.exists() or destination.exists():
+            return False
+
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        source.rename(destination)
+
+        return True
+
     def execute(self, action):
         """Execute a structured Orbit action."""
 
@@ -108,6 +121,10 @@ class Automation:
 
         if action.get("action") == "create_folder":
             return self.create_folder(action.get("target"))
+
+        if action.get("action") == "move":
+            target = action.get("target", {})
+            return self.move(target.get("source"), target.get("destination"))
 
         if action.get("action") == "delete_file":
             return self.delete_file(action.get("target"))
