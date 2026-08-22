@@ -7,9 +7,12 @@ class Automation:
     """Handles automated computer actions for Orbit."""
 
     def open_app(self, target):
+        """Open an application or activate it if already running."""
+
         apps = {
             "chrome": "google-chrome",
             "firefox": "firefox",
+            "brave": "brave-browser",
             "terminal": "gnome-terminal",
             "file_manager": "nautilus",
         }
@@ -19,6 +22,11 @@ class Automation:
         if command is None:
             return False
 
+        # Reuse an existing window if possible.
+        if self.activate_app(target):
+            return True
+
+        # Application isn't running, so launch it.
         subprocess.Popen(
             [command],
             stdout=subprocess.DEVNULL,
@@ -211,7 +219,7 @@ class Automation:
         return [str(path) for path in directory.rglob(pattern) if path.is_file()]
 
     def click(self, target):
-        """Click at the specified screen coordinates using ydotool."""
+        """Click at the specified screen coordinates using wdotool."""
 
         if not isinstance(target, dict):
             return False
@@ -224,16 +232,189 @@ class Automation:
 
         try:
             subprocess.run(
-                ["ydotool", "mousemove", "--absolute", str(x), str(y)],
+                [
+                    "wdotool",
+                    "--backend",
+                    "gnome",
+                    "mousemove",
+                    str(x),
+                    str(y),
+                ],
                 check=True,
             )
 
             subprocess.run(
-                ["ydotool", "click", "0xC0"],
+                [
+                    "wdotool",
+                    "--backend",
+                    "gnome",
+                    "click",
+                    "1",
+                ],
                 check=True,
             )
 
             return True
+
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            return False
+
+    def type_text(self, text):
+        """Type text using ydotool."""
+
+        if not isinstance(text, str) or not text:
+            return False
+
+        try:
+            subprocess.run(
+                ["ydotool", "type", "--", text],
+                check=True,
+            )
+
+            return True
+
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            return False
+
+    def get_active_window(self):
+        """Return information about the currently active window."""
+
+        try:
+            result = subprocess.run(
+                ["wdotool", "--backend", "gnome", "getactivewindow"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+
+            window_id = result.stdout.strip()
+
+            if not window_id:
+                return False
+
+            name = subprocess.run(
+                [
+                    "wdotool",
+                    "--backend",
+                    "gnome",
+                    "getwindowname",
+                    window_id,
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+
+            return {
+                "id": window_id,
+                "name": name.stdout.strip(),
+            }
+
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            return False
+
+    def is_app_active(self, app_name):
+        """Check whether the active window belongs to an application."""
+
+        if not app_name:
+            return False
+
+        window = self.get_active_window()
+
+        if not window:
+            return False
+
+        aliases = {
+            "firefox": ["firefox"],
+            "chrome": ["google-chrome", "chrome"],
+            "terminal": ["gnome-terminal", "org.gnome.terminal"],
+            "files": ["org.gnome.nautilus", "nautilus"],
+        }
+
+        candidates = aliases.get(
+            app_name.lower(),
+            [app_name.lower()],
+        )
+
+        try:
+            result = subprocess.run(
+                [
+                    "wdotool",
+                    "--backend",
+                    "gnome",
+                    "getwindowclassname",
+                    window["id"],
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+
+            app_id = result.stdout.strip().lower()
+
+            return any(candidate in app_id for candidate in candidates)
+
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            return False
+
+    def activate_app(self, app_name):
+        """Activate an existing application window."""
+
+        if not app_name:
+            return False
+
+        classes = {
+            "firefox": "firefox",
+            "chrome": "google-chrome",
+            "brave": "brave",
+            "terminal": "org.gnome.Terminal",
+            "file_manager": "org.gnome.Nautilus",
+        }
+
+        app_class = classes.get(
+            app_name.lower(),
+            app_name,
+        )
+
+        try:
+            result = subprocess.run(
+                [
+                    "wdotool",
+                    "--backend",
+                    "gnome",
+                    "search",
+                    "--class",
+                    app_class,
+                    "--ignore-case",
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            for line in result.stdout.splitlines():
+                parts = line.strip().split(maxsplit=1)
+
+                if not parts:
+                    continue
+
+                window_id = parts[0]
+
+                if window_id.isdigit():
+                    subprocess.run(
+                        [
+                            "wdotool",
+                            "--backend",
+                            "gnome",
+                            "windowactivate",
+                            window_id,
+                        ],
+                        check=True,
+                    )
+
+                    return True
+
+            return False
 
         except (subprocess.CalledProcessError, FileNotFoundError):
             return False
@@ -289,5 +470,11 @@ class Automation:
 
         if action.get("action") == "click":
             return self.click(action.get("target"))
+
+        if action.get("action") == "click":
+            return self.click(action.get("target"))
+
+        if action.get("action") == "type_text":
+            return self.type_text(action.get("target"))
 
         return False

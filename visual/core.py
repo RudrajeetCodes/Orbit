@@ -21,7 +21,26 @@ class VisualAction:
 
         x, y = position
 
-        return self.automation.click({
-            "x": x,
-            "y": y,
-        })
+        return self.automation.click(
+            {
+                "x": x,
+                "y": y,
+            }
+        )
+
+    def type_text(self, text):
+        """Type text using the currently focused application."""
+        if not text:
+            return False
+
+        return self.automation.type_text(text)
+
+    def click_and_type(self, target, text):
+        """Click visible text and type into the resulting focused field."""
+        if not target or not text:
+            return False
+
+        if not self.click_text(target):
+            return False
+
+        return self.type_text(text)

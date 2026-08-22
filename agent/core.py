@@ -1,4 +1,5 @@
 from automation.core import Automation
+from visual.core import VisualAction
 
 
 class OrbitAgent:
@@ -7,6 +8,7 @@ class OrbitAgent:
     def __init__(self):
         self.current_task = None
         self.automation = Automation()
+        self.visual = VisualAction()
 
     def set_task(self, task):
         self.current_task = task
@@ -30,6 +32,11 @@ class OrbitAgent:
             return {
                 "action": "open_app",
                 "target": "chrome",
+            }
+        if "open brave" in command_lower:
+            return {
+                "action": "open_app",
+                "target": "brave",
             }
 
         if "open firefox" in command_lower:
@@ -197,10 +204,70 @@ class OrbitAgent:
                     },
                 }
 
+        if command_lower.startswith("click "):
+            target = command[6:].strip()
+
+            if target:
+                return {
+                    "action": "click_text",
+                    "target": target,
+                }
+
         return {
             "action": "unknown",
             "target": None,
         }
+
+    def plan_steps(self, task):
+        """Convert a multi-step task into a list of structured actions."""
+
+        if not task or not isinstance(task, str):
+            return []
+
+        parts = [part.strip() for part in task.split(" and ") if part.strip()]
+
+        steps = []
+
+        for part in parts:
+            action = self.plan(part)
+
+            if action is None:
+                continue
+
+            if action["action"] == "unknown":
+                return []
+
+            steps.append(action)
+
+        return steps
+
+    def run_steps(self, task):
+        """Plan and execute a multi-step Orbit task."""
+
+        steps = self.plan_steps(task)
+
+        if not steps:
+            return False
+
+        for step in steps:
+            action = step["action"]
+
+            if action == "click_text":
+                success = self.visual.click_text(step["target"])
+
+            else:
+                success = self.automation.execute(step)
+
+                # Give state-changing actions time to update the UI.
+                if success:
+                    import time
+
+                    time.sleep(1)
+
+            if not success:
+                return False
+
+        return True
 
     def run(self, task):
         """Plan and execute a user task."""
@@ -209,5 +276,8 @@ class OrbitAgent:
 
         if action is None:
             return False
+
+        if action["action"] == "click_text":
+            return self.visual.click_text(action["target"])
 
         return self.automation.execute(action)
