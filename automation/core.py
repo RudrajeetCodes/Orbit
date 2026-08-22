@@ -208,11 +208,35 @@ class Automation:
         if not pattern:
             return False
 
-        return [
-            str(path)
-            for path in directory.rglob(pattern)
-            if path.is_file()
-        ]
+        return [str(path) for path in directory.rglob(pattern) if path.is_file()]
+
+    def click(self, target):
+        """Click at the specified screen coordinates using ydotool."""
+
+        if not isinstance(target, dict):
+            return False
+
+        x = target.get("x")
+        y = target.get("y")
+
+        if x is None or y is None:
+            return False
+
+        try:
+            subprocess.run(
+                ["ydotool", "mousemove", "--absolute", str(x), str(y)],
+                check=True,
+            )
+
+            subprocess.run(
+                ["ydotool", "click", "0xC0"],
+                check=True,
+            )
+
+            return True
+
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            return False
 
     def execute(self, action):
         """Execute a structured Orbit action."""
@@ -262,5 +286,8 @@ class Automation:
 
         if action.get("action") == "search_files":
             return self.search_files(action.get("target"))
+
+        if action.get("action") == "click":
+            return self.click(action.get("target"))
 
         return False
