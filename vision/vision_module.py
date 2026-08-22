@@ -26,13 +26,17 @@ If tesseract isn't on your PATH, set the path manually near the top of
 this file (see TESSERACT_CMD below).
 """
 
+import asyncio
 import os
+import tempfile
 import time
 from datetime import datetime
+from urllib.parse import urlparse
 
-from PIL import Image
 import pytesseract
-import mss
+from dbus_next import Message, MessageType, Variant
+from dbus_next.aio import MessageBus
+from PIL import Image
 
 # ---------------------------------------------------------------------------
 # Config
@@ -49,30 +53,90 @@ DEFAULT_MIN_CONFIDENCE = 60  # 0-100, OCR confidence threshold for a "hit"
 # Screenshot capture
 # ---------------------------------------------------------------------------
 
+
 def capture_screen(region=None, save_path=None, monitor_index=1):
     """
-    Capture the current screen and return it as a PIL Image.
+    Capture the current screen through the GNOME Screenshot portal.
 
-    Args:
-        region (tuple, optional): (left, top, width, height) to capture a
-            specific area. If None, captures the full monitor.
-        save_path (str, optional): if given, also saves the screenshot to
-            this file path (e.g. "screenshots/shot.png").
-        monitor_index (int): which monitor to use when region is None.
-            1 = primary monitor (mss convention). 0 = all monitors combined.
-
-    Returns:
-        PIL.Image.Image: the captured screenshot.
+    Designed for Wayland. Uses raw D-Bus messages to avoid relying on
+    portal introspection, which can fail with some GNOME interfaces.
     """
-    with mss.mss() as sct:
-        if region is not None:
-            left, top, width, height = region
-            monitor = {"left": left, "top": top, "width": width, "height": height}
-        else:
-            monitor = sct.monitors[monitor_index]
 
-        raw = sct.grab(monitor)
-        img = Image.frombytes("RGB", raw.size, raw.bgra, "raw", "BGRX")
+    if region is not None:
+        raise NotImplementedError(
+            "Region capture is not currently supported on Wayland."
+        )
+
+    async def _capture():
+        bus = await MessageBus().connect()
+
+        try:
+            token = f"orbit_{os.getpid()}_{int(time.time() * 1000)}"
+
+            # Call the Screenshot portal directly.
+            reply = await bus.call(
+                Message(
+                    destination="org.freedesktop.portal.Desktop",
+                    path="/org/freedesktop/portal/desktop",
+                    interface="org.freedesktop.portal.Screenshot",
+                    member="Screenshot",
+                    signature="sa{sv}",
+                    body=[
+                        "",
+                        {
+                            "interactive": Variant("b", False),
+                            "modal": Variant("b", False),
+                            "handle_token": Variant("s", token),
+                        },
+                    ],
+                )
+            )
+
+            if reply.message_type == MessageType.ERROR:
+                raise RuntimeError(
+                    f"Screenshot portal error: {reply.error_name}: {reply.body}"
+                )
+
+            request_path = reply.body[0]
+
+            response_future = asyncio.get_running_loop().create_future()
+
+            def on_message(message):
+                if (
+                    message.message_type == MessageType.SIGNAL
+                    and message.path == request_path
+                    and message.interface == "org.freedesktop.portal.Request"
+                    and message.member == "Response"
+                ):
+                    if not response_future.done():
+                        response_future.set_result(message.body)
+
+            bus.add_message_handler(on_message)
+
+            response, results = await response_future
+
+            bus.remove_message_handler(on_message)
+
+            if response != 0:
+                raise RuntimeError(
+                    f"Screenshot request failed with response code {response}"
+                )
+
+            uri_variant = results.get("uri")
+
+            if uri_variant is None:
+                raise RuntimeError("Screenshot portal returned no image URI.")
+
+            screenshot_path = urlparse(uri_variant.value).path
+
+            return screenshot_path
+
+        finally:
+            bus.disconnect()
+
+    screenshot_path = asyncio.run(_capture())
+
+    img = Image.open(screenshot_path).convert("RGB")
 
     if save_path:
         os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
@@ -99,6 +163,7 @@ def capture_screen_to_file(directory=DEFAULT_SAVE_DIR, prefix="screenshot"):
 # ---------------------------------------------------------------------------
 # OCR / text detection
 # ---------------------------------------------------------------------------
+
 
 def run_ocr(image):
     """
@@ -156,21 +221,25 @@ def get_text_locations(image, min_confidence=DEFAULT_MIN_CONFIDENCE):
         left, top = data["left"][i], data["top"][i]
         width, height = data["width"][i], data["height"][i]
 
-        results.append({
-            "text": text,
-            "left": left,
-            "top": top,
-            "width": width,
-            "height": height,
-            "center_x": left + width // 2,
-            "center_y": top + height // 2,
-            "confidence": conf,
-        })
+        results.append(
+            {
+                "text": text,
+                "left": left,
+                "top": top,
+                "width": width,
+                "height": height,
+                "center_x": left + width // 2,
+                "center_y": top + height // 2,
+                "confidence": conf,
+            }
+        )
 
     return results
 
 
-def find_text(image, target_text, case_sensitive=False, min_confidence=DEFAULT_MIN_CONFIDENCE):
+def find_text(
+    image, target_text, case_sensitive=False, min_confidence=DEFAULT_MIN_CONFIDENCE
+):
     """
     Search OCR results for a specific piece of text and return its
     location(s) if found.
@@ -199,12 +268,40 @@ def find_text(image, target_text, case_sensitive=False, min_confidence=DEFAULT_M
     return matches
 
 
+def find_text_center(
+    image, target_text, case_sensitive=False, min_confidence=DEFAULT_MIN_CONFIDENCE
+):
+    """
+    Find text on screen and return the center coordinates of the
+    best matching result.
+    """
+    matches = find_text(
+        image,
+        target_text,
+        case_sensitive=case_sensitive,
+        min_confidence=min_confidence,
+    )
+
+    if not matches:
+        return None
+
+    # Prefer the highest-confidence match.
+    best = max(matches, key=lambda entry: entry["confidence"])
+
+    return best["center_x"], best["center_y"]
+
+
 # ---------------------------------------------------------------------------
 # Combined convenience function
 # ---------------------------------------------------------------------------
 
-def capture_and_find(target_text, region=None, case_sensitive=False,
-                      min_confidence=DEFAULT_MIN_CONFIDENCE):
+
+def capture_and_find(
+    target_text,
+    region=None,
+    case_sensitive=False,
+    min_confidence=DEFAULT_MIN_CONFIDENCE,
+):
     """
     Take a fresh screenshot and immediately search it for target_text.
     Useful as the main entry point other modules will likely call.
@@ -223,14 +320,18 @@ def capture_and_find(target_text, region=None, case_sensitive=False,
             coordinates.
     """
     screenshot = capture_screen(region=region)
-    return find_text(screenshot, target_text,
-                      case_sensitive=case_sensitive,
-                      min_confidence=min_confidence)
+    return find_text(
+        screenshot,
+        target_text,
+        case_sensitive=case_sensitive,
+        min_confidence=min_confidence,
+    )
 
 
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
 
 def _load_image(image):
     """Accept either a PIL Image or a file path and always return a PIL Image."""
@@ -262,9 +363,13 @@ if __name__ == "__main__":
     # 3. Get text + coordinates
     print("3. Locating text and coordinates...")
     locations = get_text_locations(shot_path)
-    print(f"   Found {len(locations)} text elements with confidence >= {DEFAULT_MIN_CONFIDENCE}")
+    print(
+        f"   Found {len(locations)} text elements with confidence >= {DEFAULT_MIN_CONFIDENCE}"
+    )
     for entry in locations[:5]:
-        print(f"     '{entry['text']}' at ({entry['center_x']}, {entry['center_y']}) "
-              f"conf={entry['confidence']}")
+        print(
+            f"     '{entry['text']}' at ({entry['center_x']}, {entry['center_y']}) "
+            f"conf={entry['confidence']}"
+        )
 
     print("Done.")
