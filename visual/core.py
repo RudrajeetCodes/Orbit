@@ -1,5 +1,9 @@
 from automation.core import Automation
-from vision.vision_module import capture_screen, find_text_center
+from vision.vision_module import (
+    capture_screen,
+    find_text_center,
+    mask_regions,
+)
 
 
 class VisualAction:
@@ -7,6 +11,11 @@ class VisualAction:
 
     def __init__(self):
         self.automation = Automation()
+        self.excluded_regions = []
+
+    def set_excluded_regions(self, regions):
+        """Set screen regions that visual OCR should ignore."""
+        self.excluded_regions = list(regions or [])
 
     def click_text(self, target):
         """Find visible text and click its center."""
@@ -14,6 +23,16 @@ class VisualAction:
             return False
 
         screenshot = capture_screen()
+
+        print("VisualAction excluded regions:", self.excluded_regions)
+
+        if self.excluded_regions:
+            screenshot = mask_regions(
+                screenshot,
+                self.excluded_regions,
+            )
+            screenshot.save("/tmp/orbit-click-debug.png")
+
         position = find_text_center(screenshot, target)
 
         if position is None:

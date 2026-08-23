@@ -36,7 +36,7 @@ from urllib.parse import urlparse
 import pytesseract
 from dbus_next import Message, MessageType, Variant
 from dbus_next.aio import MessageBus
-from PIL import Image
+from PIL import Image, ImageDraw
 
 # ---------------------------------------------------------------------------
 # Config
@@ -143,6 +143,19 @@ def capture_screen(region=None, save_path=None, monitor_index=1):
         img.save(save_path)
 
     return img
+
+def mask_regions(image, regions):
+    """Mask excluded screen regions so OCR ignores them."""
+    image = image.copy()
+    draw = ImageDraw.Draw(image)
+
+    for left, top, right, bottom in regions:
+        draw.rectangle(
+            (left, top, right, bottom),
+            fill="black",
+        )
+
+    return image
 
 
 def capture_screen_to_file(directory=DEFAULT_SAVE_DIR, prefix="screenshot"):

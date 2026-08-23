@@ -252,6 +252,33 @@ class Overlay(QWidget):
 
         self.show_status("Orbit", "● Working...")
 
+        screen = QApplication.primaryScreen()
+        geometry = screen.availableGeometry()
+
+        dock_x = geometry.x() + (geometry.width() - self.width()) // 2
+        dock_y = geometry.y() + (geometry.height() - self.height()) // 2
+
+        self.agent.visual.set_excluded_regions(
+            [
+                (
+                    dock_x,
+                    dock_y,
+                    dock_x + self.width(),
+                    dock_y + self.height(),
+                )
+            ]
+        )
+
+        print(
+            "Orbit excluded region:",
+            (
+                dock_x,
+                dock_y,
+                dock_x + self.width(),
+                dock_y + self.height(),
+            ),
+        )
+
         self.worker = AgentWorker(self.agent, command)
         self.worker.finished.connect(self.command_finished)
         self.worker.start()
