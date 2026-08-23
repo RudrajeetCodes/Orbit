@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from agent.core import OrbitAgent
 from PySide6.QtCore import Qt, QThread, Signal
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QColor, QFont, QPainter, QPen
 from PySide6.QtWidgets import (
     QApplication,
     QHBoxLayout,
@@ -34,6 +34,9 @@ class Overlay(QWidget):
 
     def __init__(self):
         super().__init__()
+        self.setObjectName("dock")
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
 
         self.agent = OrbitAgent()
         self.worker = None
@@ -46,7 +49,7 @@ class Overlay(QWidget):
 
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
-        self.setFixedSize(620, 72)
+        self.setFixedSize(620, 88)
 
         self.input = QLineEdit()
         self.input.setPlaceholderText("Ask Orbit to do something...")
@@ -59,60 +62,168 @@ class Overlay(QWidget):
 
         self.status = QLabel("● Ready")
         self.status.setFont(QFont("Segoe UI", 10))
+        self.brand = QLabel("◉ Orbit")
+        self.brand.setObjectName("brand")
+        self.brand.setFont(QFont("Segoe UI", 13, QFont.Weight.Bold))
 
         input_layout = QHBoxLayout()
         input_layout.setContentsMargins(0, 0, 0, 0)
         input_layout.setSpacing(10)
-        input_layout.addWidget(self.input)
+
+        input_layout.addWidget(self.brand)
+        input_layout.addWidget(self.input, 1)
         input_layout.addWidget(self.run_button)
 
         layout = QVBoxLayout()
         layout.setContentsMargins(14, 10, 14, 8)
         layout.setSpacing(2)
         layout.addLayout(input_layout)
-        layout.addWidget(self.status)
 
-        self.setLayout(layout)
+        # Main dock layout
+        main_layout = QHBoxLayout()
+        main_layout.setContentsMargins(14, 10, 14, 8)
+        main_layout.setSpacing(14)
+
+        # Orbit branding
+        self.brand.setFixedWidth(78)
+
+        # Right side: input + status
+        right_layout = QVBoxLayout()
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(2)
+
+        # Input row
+        input_layout = QHBoxLayout()
+        input_layout.setContentsMargins(0, 0, 0, 0)
+        input_layout.setSpacing(10)
+
+        input_layout.addWidget(self.input, 1)
+        input_layout.addWidget(self.run_button)
+
+        right_layout.addLayout(input_layout)
+
+        # Status
+        status_layout = QHBoxLayout()
+        status_layout.setContentsMargins(2, 0, 0, 0)
+        status_layout.addWidget(self.status)
+        status_layout.addStretch()
+
+        right_layout.addLayout(status_layout)
+
+        # Put everything together
+        main_layout.addWidget(self.brand)
+        main_layout.addLayout(right_layout, 1)
+
+        self.setLayout(main_layout)
 
         self.setStyleSheet("""
-            QWidget {
-                background-color: rgba(20, 20, 24, 235);
-                border: 1px solid rgba(255, 255, 255, 35);
-                border-radius: 18px;
-            }
+        /* =========================
+        ORBIT MAIN DOCK
+        ========================= */
 
-            QLineEdit {
-                background-color: rgba(255, 255, 255, 12);
-                color: white;
-                border: 1px solid rgba(255, 255, 255, 25);
-                border-radius: 13px;
-                padding: 0 14px;
-            }
+        QWidget#dock {
+            background-color: rgba(58, 58, 64, 245);
+            border: 1px solid rgba(255, 255, 255, 70);
+            border-radius: 22px;
+        }
 
-            QLineEdit:focus {
-                border: 1px solid rgba(120, 170, 255, 120);
-            }
 
-            QPushButton {
-                background-color: rgba(255, 255, 255, 20);
-                color: white;
-                border: none;
-                border-radius: 13px;
-            }
+        /* =========================
+        COMMAND INPUT
+        ========================= */
 
-            QPushButton:hover {
-                background-color: rgba(255, 255, 255, 35);
-            }
+        QLabel#brand {
+            color: white;
+            background: transparent;
+            border: none;
+            padding: 0 4px;
+        }
 
-            QLabel {
-                color: rgba(255, 255, 255, 150);
-                background: transparent;
-                border: none;
-            }
-        """)
+        QLineEdit {
+            background-color: rgba(42, 42, 48, 235);
+            color: #ffffff;
+
+            border: 1px solid rgba(255, 255, 255, 45);
+            border-radius: 15px;
+
+            padding-left: 16px;
+            padding-right: 16px;
+
+            selection-background-color: rgba(130, 130, 140, 120);
+        }
+
+        QLineEdit:hover {
+            background-color: rgba(48, 48, 54, 240);
+            border: 1px solid rgba(255, 255, 255, 65);
+        }
+
+        QLineEdit:focus {
+            background-color: rgba(45, 45, 51, 245);
+            border: 1px solid rgba(255, 255, 255, 110);
+        }
+
+        QLineEdit::placeholder {
+            color: rgba(255, 255, 255, 135);
+        }
+
+
+        /* =========================
+        RUN BUTTON
+        ========================= */
+
+        QPushButton {
+            background-color: rgba(78, 78, 86, 245);
+            color: #ffffff;
+
+            border: 1px solid rgba(255, 255, 255, 65);
+            border-radius: 15px;
+
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        QPushButton:hover {
+            background-color: rgba(92, 92, 100, 250);
+            border: 1px solid rgba(255, 255, 255, 90);
+        }
+
+        QPushButton:pressed {
+            background-color: rgba(68, 68, 75, 250);
+        }
+
+        QPushButton:disabled {
+            background-color: rgba(70, 70, 76, 180);
+            color: rgba(255, 255, 255, 80);
+        }
+
+
+        /* =========================
+        STATUS
+        ========================= */
+
+        QLabel {
+            background: transparent;
+            border: none;
+            color: rgba(255, 255, 255, 175);
+        }
+    """)
 
         self.run_button.clicked.connect(self.run_command)
         self.input.returnPressed.connect(self.run_command)
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        # Grey floating dock background
+        painter.setBrush(QColor(58, 58, 64, 245))
+
+        # Subtle light border
+        painter.setPen(QPen(QColor(255, 255, 255, 70), 1))
+
+        rect = self.rect().adjusted(1, 1, -1, -1)
+
+        painter.drawRoundedRect(rect, 22, 22)
 
     def show_status(self, title: str, message: str):
         self.status.setText(f"{title}  {message}")
@@ -126,7 +237,7 @@ class Overlay(QWidget):
         geometry = screen.availableGeometry()
 
         x = geometry.x() + (geometry.width() - self.width()) // 2
-        y = geometry.y() + geometry.height() - self.height() - 50
+        y = geometry.y() + geometry.height() - self.height() - 60
 
         self.move(x, y)
 
