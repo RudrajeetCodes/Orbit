@@ -267,7 +267,7 @@ class Automation:
 
         try:
             subprocess.run(
-                ["ydotool", "type", "--", text],
+                ["wdotool", "--backend", "gnome", "type", "--", text],
                 check=True,
             )
 

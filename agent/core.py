@@ -254,15 +254,14 @@ class OrbitAgent:
 
             if action == "click_text":
                 success = self.visual.click_text(step["target"])
-
             else:
                 success = self.automation.execute(step)
 
-                # Give state-changing actions time to update the UI.
-                if success:
+                # Give the application time to become visible/focused.
+                if success and action == "open_app":
                     import time
 
-                    time.sleep(1)
+                    time.sleep(2)
 
             if not success:
                 return False
