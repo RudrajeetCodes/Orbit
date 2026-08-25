@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from automation.core import Automation
 from visual.core import VisualAction
 
@@ -9,6 +11,26 @@ class OrbitAgent:
         self.current_task = None
         self.automation = Automation()
         self.visual = VisualAction()
+
+    def resolve_path(self, path):
+        """Resolve natural-language filesystem locations."""
+        path = path.strip()
+
+        home = Path.home()
+
+        if path.lower() in ("home", "my home", "home directory"):
+            return str(home)
+
+        if path.lower().startswith("home/"):
+            return str(home / path[5:])
+
+        if path.startswith("~/"):
+            return str(Path(path).expanduser())
+
+        if path.startswith("/"):
+            return path
+
+        return str(home / path)
 
     def set_task(self, task):
         self.current_task = task
@@ -76,7 +98,16 @@ class OrbitAgent:
                 }
 
         if "create a folder called " in command_lower:
-            target = command.split("create a folder called ", 1)[1].strip()
+            prefix = "create a folder called "
+            target = command[len(prefix) :].strip()
+
+            parts = target.rsplit(" in ", 1)
+
+            if len(parts) == 2:
+                folder_name, parent = parts
+                target = str(
+                    Path(self.resolve_path(parent.strip())) / folder_name.strip()
+                )
 
             if target:
                 return {
@@ -85,7 +116,16 @@ class OrbitAgent:
                 }
 
         if "make a folder called " in command_lower:
-            target = command.split("make a folder called ", 1)[1].strip()
+            prefix = "make a folder called "
+            target = command[len(prefix) :].strip()
+
+            parts = target.rsplit(" in ", 1)
+
+            if len(parts) == 2:
+                folder_name, parent = parts
+                target = str(
+                    Path(self.resolve_path(parent.strip())) / folder_name.strip()
+                )
 
             if target:
                 return {
@@ -122,8 +162,42 @@ class OrbitAgent:
 
         if "move " in command_lower and " to " in command_lower:
             source, destination = command.split(" to ", 1)
+
             source = source[len("move ") :].strip()
             destination = destination.strip()
+
+            # Remove natural-language item prefixes.
+            for prefix in (
+                "the folder ",
+                "a folder ",
+                "the file ",
+                "a file ",
+            ):
+                if source.lower().startswith(prefix):
+                    source = source[len(prefix) :].strip()
+                    break
+
+            # Resolve source location.
+            source_parts = source.rsplit(" in ", 1)
+
+            if len(source_parts) == 2:
+                source_name, source_parent = source_parts
+
+                source = str(
+                    Path(self.resolve_path(source_parent.strip())) / source_name.strip()
+                )
+            else:
+                source = self.resolve_path(source)
+
+            # Resolve destination.
+            destination = self.resolve_path(destination)
+
+            # If destination is an existing directory,
+            # move the item into it using its original name.
+            destination_path = Path(destination)
+
+            if destination_path.exists() and destination_path.is_dir():
+                destination = str(destination_path / Path(source).name)
 
             if source and destination:
                 return {

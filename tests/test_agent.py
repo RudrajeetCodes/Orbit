@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from agent.core import OrbitAgent
 
 
@@ -121,8 +123,8 @@ def test_plan_move():
     assert result == {
         "action": "move",
         "target": {
-            "source": "notes.txt",
-            "destination": "Documents/notes.txt",
+            "source": str(Path.home() / "notes.txt"),
+            "destination": str(Path.home() / "Documents/notes.txt"),
         },
     }
 
