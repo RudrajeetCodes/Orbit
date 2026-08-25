@@ -1,15 +1,6 @@
+from pathlib import Path
+
 from agent.core import OrbitAgent
-
-
-def test_open_firefox():
-    agent = OrbitAgent()
-
-    result = agent.plan("Open Firefox")
-
-    assert result == {
-        "action": "open_app",
-        "target": "firefox",
-    }
 
 
 def test_open_firefox():
@@ -71,12 +62,14 @@ def test_run_unknown_command():
 
     assert result is False
 
+
 def test_run_open_chrome():
     agent = OrbitAgent()
 
     result = agent.run("Open Firefox")
 
     assert result is True
+
 
 def test_plan_create_file():
     agent = OrbitAgent()
@@ -98,6 +91,8 @@ def test_plan_create_folder():
         "action": "create_folder",
         "target": "Projects",
     }
+
+
 def test_plan_delete_file():
     agent = OrbitAgent()
 
@@ -128,8 +123,8 @@ def test_plan_move():
     assert result == {
         "action": "move",
         "target": {
-            "source": "notes.txt",
-            "destination": "Documents/notes.txt",
+            "source": str(Path.home() / "notes.txt"),
+            "destination": str(Path.home() / "Documents/notes.txt"),
         },
     }
 
@@ -161,6 +156,7 @@ def test_plan_rename_file():
         },
     }
 
+
 def test_plan_list_directory():
     agent = OrbitAgent()
 
@@ -171,6 +167,7 @@ def test_plan_list_directory():
         "target": "Projects",
     }
 
+
 def test_plan_get_file_info():
     agent = OrbitAgent()
 
@@ -180,6 +177,7 @@ def test_plan_get_file_info():
         "action": "get_file_info",
         "target": "notes.txt",
     }
+
 
 def test_plan_search_files():
     agent = OrbitAgent()
@@ -193,3 +191,68 @@ def test_plan_search_files():
             "pattern": "*.py",
         },
     }
+
+
+def test_plan_make_file():
+    agent = OrbitAgent()
+
+    result = agent.plan("make a file called notes.txt")
+
+    assert result == {
+        "action": "create_file",
+        "target": "notes.txt",
+    }
+
+
+def test_plan_make_folder():
+    agent = OrbitAgent()
+
+    result = agent.plan("make a folder called Projects")
+
+    assert result == {
+        "action": "create_folder",
+        "target": "Projects",
+    }
+
+
+def test_plan_remove_file():
+    agent = OrbitAgent()
+
+    result = agent.plan("remove the file notes.txt")
+
+    assert result == {
+        "action": "delete_file",
+        "target": "notes.txt",
+    }
+
+
+def test_plan_click_text():
+    agent = OrbitAgent()
+
+    result = agent.plan("click WhatsApp")
+
+    assert result == {
+        "action": "click_text",
+        "target": "WhatsApp",
+    }
+
+
+def test_plan_click_text_case():
+    agent = OrbitAgent()
+
+    result = agent.plan("CLICK WhatsApp")
+
+    assert result == {
+        "action": "click_text",
+        "target": "WhatsApp",
+    }
+
+
+def test_run_click_text():
+    agent = OrbitAgent()
+
+    agent.visual.click_text = lambda target: True
+
+    result = agent.run("click WhatsApp")
+
+    assert result is True

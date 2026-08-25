@@ -378,16 +378,33 @@ def test_search_files(tmp_path):
     (src / "core.py").write_text("Orbit core")
     (src / "readme.md").write_text("Orbit")
 
-    result = automation.execute({
-        "action": "search_files",
-        "target": {
-            "directory": str(projects),
-            "pattern": "*.py",
-        },
-    })
+    result = automation.execute(
+        {
+            "action": "search_files",
+            "target": {
+                "directory": str(projects),
+                "pattern": "*.py",
+            },
+        }
+    )
 
     assert result is not False
     assert len(result) == 2
     assert any("main.py" in path for path in result)
     assert any("core.py" in path for path in result)
 
+
+def test_type_text():
+    automation = Automation()
+
+    result = automation.type_text("Hello from Orbit")
+
+    assert result is True
+
+
+def test_type_text_empty():
+    automation = Automation()
+
+    result = automation.type_text("")
+
+    assert result is False
