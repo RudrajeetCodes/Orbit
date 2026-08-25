@@ -32,6 +32,70 @@ class OrbitAgent:
 
         return str(home / path)
 
+    def resolve_url(self, site):
+        """Convert a website name or URL into a usable URL."""
+        site = site.strip()
+
+        if not site:
+            return None
+
+        if site.startswith(("http://", "https://")):
+            return site
+
+        site = site.rstrip("/")
+
+        if "." not in site:
+            site = f"{site}.com"
+
+        return f"https://{site.lower()}"
+
+    def plan_web_search(self, command):
+        """Parse a browser + website + search request."""
+        command_lower = command.lower()
+
+        browsers = {
+            "chrome": "chrome",
+            "brave": "brave",
+            "firefox": "firefox",
+        }
+
+        browser = None
+
+        for name in browsers:
+            if f"open {name}" in command_lower:
+                browser = browsers[name]
+                break
+
+        if browser is None:
+            return None
+
+
+        if " and search for " not in command_lower:
+            return None
+
+        open_positions = [
+            i for i in range(len(command_lower)) if command_lower.startswith("open ", i)
+        ]
+
+        if len(open_positions) < 2:
+            return None
+
+        website_start = open_positions[1] + len("open ")
+        search_start = command_lower.index(" and search for ")
+
+        site = command[website_start:search_start].strip().rstrip(",")
+        query = command[search_start + len(" and search for ") :].strip()
+
+        if not site or not query:
+            return None
+
+        return {
+            "action": "web_search",
+            "browser": browser,
+            "site": site,
+            "query": query,
+        }
+
     def set_task(self, task):
         self.current_task = task
 
@@ -49,6 +113,11 @@ class OrbitAgent:
 
         command = self.current_task.strip()
         command_lower = command.lower()
+
+        web_search = self.plan_web_search(command)
+
+        if web_search:
+            return web_search
 
         if "open chrome" in command_lower:
             return {
@@ -342,6 +411,79 @@ class OrbitAgent:
 
         return True
 
+    def execute_web_search(self, step):
+        """Execute a browser + website + search workflow."""
+
+        browser = step.get("browser")
+        site = step.get("site")
+        query = step.get("query")
+
+        print("WEB SEARCH: looking for Search")
+
+        if not browser or not site or not query:
+            print("WEB SEARCH: Search button not found")
+            return False
+
+        print("WEB SEARCH: Search clicked")
+
+        # Open the requested browser.
+        if not self.automation.execute(
+            {
+                "action": "open_app",
+                "target": browser,
+            }
+        ):
+            return False
+
+        import time
+
+        time.sleep(2)
+
+        # Open the website in the requested browser.
+        url = self.resolve_url(site)
+
+        if not self.automation.execute(
+            {
+                "action": "open_url",
+                "target": url,
+                "browser": browser,
+            }
+        ):
+            return False
+
+        time.sleep(3)
+
+        # Find and click the search field using OCR.
+        if not self.visual.click_text("Search"):
+            return False
+
+        print("WEB SEARCH: typing query")
+
+        # Type the search query.
+        if not self.automation.execute(
+            {
+                "action": "type_text",
+                "target": query,
+            }
+        ):
+            print("WEB SEARCH: typing failed")
+            return False
+
+        print("WEB SEARCH: query typed")
+
+        print("WEB SEARCH: pressing Return")
+
+        success = self.automation.execute(
+            {
+                "action": "press_key",
+                "target": "Return",
+            }
+        )
+
+        print("WEB SEARCH: Return result =", success)
+
+        return success
+
     def run(self, task):
         """Plan and execute a user task."""
 
@@ -352,5 +494,8 @@ class OrbitAgent:
 
         if action["action"] == "click_text":
             return self.visual.click_text(action["target"])
+
+        if action["action"] == "web_search":
+            return self.execute_web_search(action)
 
         return self.automation.execute(action)

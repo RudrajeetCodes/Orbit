@@ -35,14 +35,25 @@ class Automation:
 
         return True
 
-    def open_url(self, target):
-        """Open a URL using Firefox."""
+    def open_url(self, target, browser="firefox"):
+        """Open a URL using the requested browser."""
 
         if not target:
             return False
 
+        browsers = {
+            "chrome": "google-chrome",
+            "firefox": "firefox",
+            "brave": "brave-browser",
+        }
+
+        command = browsers.get(browser.lower())
+
+        if command is None:
+            return False
+
         subprocess.Popen(
-            ["firefox", target],
+            [command, target],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
@@ -276,6 +287,23 @@ class Automation:
         except (subprocess.CalledProcessError, FileNotFoundError):
             return False
 
+    def press_key(self, key):
+        """Press a keyboard key using wdotool."""
+
+        if not isinstance(key, str) or not key:
+            return False
+
+        try:
+            subprocess.run(
+                ["wdotool", "--backend", "gnome", "key", key],
+                check=True,
+            )
+
+            return True
+
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            return False
+
     def get_active_window(self):
         """Return information about the currently active window."""
 
@@ -429,7 +457,10 @@ class Automation:
             return self.open_app(action.get("target"))
 
         if action.get("action") == "open_url":
-            return self.open_url(action.get("target"))
+            return self.open_url(
+                action.get("target"),
+                action.get("browser", "firefox"),
+            )
 
         if action.get("action") == "create_folder":
             return self.create_folder(action.get("target"))
@@ -476,5 +507,8 @@ class Automation:
 
         if action.get("action") == "type_text":
             return self.type_text(action.get("target"))
+
+        if action.get("action") == "press_key":
+            return self.press_key(action.get("target"))
 
         return False
