@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from automation.core import Automation
 from visual.core import VisualAction
 
@@ -15,6 +17,41 @@ class OrbitAgent:
 
     def clear_task(self):
         self.current_task = None
+
+    def resolve_path(self, value):
+        """Resolve common natural-language filesystem locations dynamically."""
+        if not value or not isinstance(value, str):
+            return value
+
+        path = value.strip()
+        home = Path.home()
+
+        aliases = {
+            "home": home,
+            "~": home,
+            "desktop": home / "Desktop",
+            "documents": home / "Documents",
+            "downloads": home / "Downloads",
+            "projects": home / "Projects",
+        }
+
+        lower = path.lower()
+
+        if lower in aliases:
+            return str(aliases[lower])
+
+        for alias, base in aliases.items():
+            prefix = alias + "/"
+            if lower.startswith(prefix):
+                relative = path[len(alias) :].lstrip("/\\")
+                return str(base / relative)
+
+        # Already absolute.
+        if Path(path).is_absolute():
+            return str(Path(path))
+
+        # Otherwise resolve relative paths from Home.
+        return path
 
     def plan(self, task=None):
         """Convert a user task into a structured action."""
@@ -76,7 +113,18 @@ class OrbitAgent:
                 }
 
         if "create a folder called " in command_lower:
-            target = command.split("create a folder called ", 1)[1].strip()
+            prefix = "create a folder called "
+            target = command[len(prefix) :].strip()
+
+            parts = target.rsplit(" in ", 1)
+
+            if len(parts) == 2:
+                folder_name, parent = parts
+                target = str(
+                    Path(self.resolve_path(parent.strip())) / folder_name.strip()
+                )
+            else:
+                target = target
 
             if target:
                 return {
@@ -85,7 +133,18 @@ class OrbitAgent:
                 }
 
         if "make a folder called " in command_lower:
-            target = command.split("make a folder called ", 1)[1].strip()
+            prefix = "make a folder called "
+            target = command[len(prefix) :].strip()
+
+            parts = target.rsplit(" in ", 1)
+
+            if len(parts) == 2:
+                folder_name, parent = parts
+                target = str(
+                    Path(self.resolve_path(parent.strip())) / folder_name.strip()
+                )
+            else:
+                target = target
 
             if target:
                 return {
@@ -122,8 +181,43 @@ class OrbitAgent:
 
         if "move " in command_lower and " to " in command_lower:
             source, destination = command.split(" to ", 1)
+
             source = source[len("move ") :].strip()
             destination = destination.strip()
+
+            # Remove natural-language prefixes.
+            for prefix in ("the folder ", "a folder ", "the file ", "a file "):
+                if source.lower().startswith(prefix):
+                    source = source[len(prefix) :].strip()
+                    break
+
+            # Resolve source location.
+            source_parts = source.rsplit(" in ", 1)
+
+            if len(source_parts) == 2:
+                source_name, source_parent = source_parts
+                source = str(
+                    Path(self.resolve_path(source_parent.strip())) / source_name.strip()
+                )
+            else:
+                source = self.resolve_path(source)
+
+            # Resolve destination directory.
+            if destination.lower() in {
+                "home",
+                "~",
+                "desktop",
+                "documents",
+                "downloads",
+                "projects",
+            }:
+                destination = self.resolve_path(destination)
+
+            # Move into an existing directory using the original item name.
+            destination_path = Path(destination)
+
+            if destination_path.exists() and destination_path.is_dir():
+                destination = str(destination_path / Path(source).name)
 
             if source and destination:
                 return {

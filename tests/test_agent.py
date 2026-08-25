@@ -249,6 +249,8 @@ def test_plan_click_text_case():
 def test_run_click_text():
     agent = OrbitAgent()
 
+    agent.visual.click_text = lambda target: True
+
     result = agent.run("click WhatsApp")
 
     assert result is True
