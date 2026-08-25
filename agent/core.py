@@ -12,46 +12,31 @@ class OrbitAgent:
         self.automation = Automation()
         self.visual = VisualAction()
 
+    def resolve_path(self, path):
+        """Resolve natural-language filesystem locations."""
+        path = path.strip()
+
+        home = Path.home()
+
+        if path.lower() in ("home", "my home", "home directory"):
+            return str(home)
+
+        if path.lower().startswith("home/"):
+            return str(home / path[5:])
+
+        if path.startswith("~/"):
+            return str(Path(path).expanduser())
+
+        if path.startswith("/"):
+            return path
+
+        return str(home / path)
+
     def set_task(self, task):
         self.current_task = task
 
     def clear_task(self):
         self.current_task = None
-
-    def resolve_path(self, value):
-        """Resolve common natural-language filesystem locations dynamically."""
-        if not value or not isinstance(value, str):
-            return value
-
-        path = value.strip()
-        home = Path.home()
-
-        aliases = {
-            "home": home,
-            "~": home,
-            "desktop": home / "Desktop",
-            "documents": home / "Documents",
-            "downloads": home / "Downloads",
-            "projects": home / "Projects",
-        }
-
-        lower = path.lower()
-
-        if lower in aliases:
-            return str(aliases[lower])
-
-        for alias, base in aliases.items():
-            prefix = alias + "/"
-            if lower.startswith(prefix):
-                relative = path[len(alias) :].lstrip("/\\")
-                return str(base / relative)
-
-        # Already absolute.
-        if Path(path).is_absolute():
-            return str(Path(path))
-
-        # Otherwise resolve relative paths from Home.
-        return path
 
     def plan(self, task=None):
         """Convert a user task into a structured action."""
@@ -123,8 +108,6 @@ class OrbitAgent:
                 target = str(
                     Path(self.resolve_path(parent.strip())) / folder_name.strip()
                 )
-            else:
-                target = target
 
             if target:
                 return {
@@ -143,8 +126,6 @@ class OrbitAgent:
                 target = str(
                     Path(self.resolve_path(parent.strip())) / folder_name.strip()
                 )
-            else:
-                target = target
 
             if target:
                 return {
@@ -185,8 +166,13 @@ class OrbitAgent:
             source = source[len("move ") :].strip()
             destination = destination.strip()
 
-            # Remove natural-language prefixes.
-            for prefix in ("the folder ", "a folder ", "the file ", "a file "):
+            # Remove natural-language item prefixes.
+            for prefix in (
+                "the folder ",
+                "a folder ",
+                "the file ",
+                "a file ",
+            ):
                 if source.lower().startswith(prefix):
                     source = source[len(prefix) :].strip()
                     break
@@ -196,24 +182,18 @@ class OrbitAgent:
 
             if len(source_parts) == 2:
                 source_name, source_parent = source_parts
+
                 source = str(
                     Path(self.resolve_path(source_parent.strip())) / source_name.strip()
                 )
             else:
                 source = self.resolve_path(source)
 
-            # Resolve destination directory.
-            if destination.lower() in {
-                "home",
-                "~",
-                "desktop",
-                "documents",
-                "downloads",
-                "projects",
-            }:
-                destination = self.resolve_path(destination)
+            # Resolve destination.
+            destination = self.resolve_path(destination)
 
-            # Move into an existing directory using the original item name.
+            # If destination is an existing directory,
+            # move the item into it using its original name.
             destination_path = Path(destination)
 
             if destination_path.exists() and destination_path.is_dir():
