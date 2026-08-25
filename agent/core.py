@@ -69,7 +69,6 @@ class OrbitAgent:
         if browser is None:
             return None
 
-
         if " and search for " not in command_lower:
             return None
 
@@ -367,6 +366,9 @@ class OrbitAgent:
         if not task or not isinstance(task, str):
             return []
 
+        if self.plan_web_search(task):
+            return [self.plan_web_search(task)]
+
         parts = [part.strip() for part in task.split(" and ") if part.strip()]
 
         steps = []
@@ -397,6 +399,8 @@ class OrbitAgent:
 
             if action == "click_text":
                 success = self.visual.click_text(step["target"])
+            elif action == "web_search":
+                success = self.execute_web_search(step)
             else:
                 success = self.automation.execute(step)
 
